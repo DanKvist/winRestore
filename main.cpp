@@ -1,5 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <Windows.h>
+
 
 int main() {
     std::ofstream logFile;
@@ -9,9 +11,14 @@ int main() {
         std::cout << "Error: file not opened." << std::endl;
         return 1;
     }
+
+    while (true) {
+        std::cout << "Hello sir!" << std::endl;
+        Sleep(2000);
+    }
         
 
-    std::cout << "Hello sir!" << std::endl;
+    
 
     logFile.close();
     return 0;
