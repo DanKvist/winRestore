@@ -9,6 +9,9 @@
 void OnSize(HWND hwnd, UINT flag, int width, int height);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPAram);
 
+BOOL CALLBACK myInfoEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM data);
+
+BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data);
 
 const wchar_t CLASS_NAME[] = L"Sample Window Class";
 
@@ -43,12 +46,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     if (hwnd == NULL)
         return 1;
 
-    int monitorCount = GetSystemMetrics(SM_CMONITORS);
-    int primaryWidth = GetSystemMetrics(SM_CXFULLSCREEN);
-    int primaryHeight = GetSystemMetrics(SM_CYFULLSCREEN);
-    std::cout << "There are " << monitorCount << " monitors connected." << std::endl;
-    std::cout << "Primary resolution is: " << primaryWidth << " x " << primaryHeight << std::endl;
 
+    std::cout << std::endl << "Display info:" << std::endl;
+    EnumDisplayMonitors(NULL, NULL, &myInfoEnumProc, NULL);
+
+    std::cout << std::endl << "Window info:" << std::endl;
+    EnumWindows(&myEnumWindowProc, NULL);
+
+    //Attempts to get display devices
+    DISPLAY_DEVICE myDisplay;
+    myDisplay.cb = sizeof(DISPLAY_DEVICE);
+    
     ShowWindow(hwnd, cmdShow);
 
     MSG msg = {};
@@ -79,7 +87,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             OnSize(hwnd, (UINT)wParam, width, height);
         }
-        return 0;
+        return 1;
 
     case WM_PAINT:
         {
@@ -90,7 +98,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             EndPaint(hwnd, &ps);
         }
-        return 0;
+        return 1;
 
     case WM_POWERBROADCAST:
         if (wParam == PBT_APMSUSPEND) 
@@ -99,17 +107,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         } else if (wParam == PBT_APMRESUMEAUTOMATIC) {
             std::cout << "Resumed" << std::endl;
         } 
-        return 0;
+        return 1;
 
     case WM_CLOSE:
         if (MessageBox(hwnd, L"Really quit?", L"My application", MB_OKCANCEL) == IDOK)
         {
             DestroyWindow(hwnd);
         }
-        return 0;
+        return 1;
     case WM_DESTROY:
         PostQuitMessage(0);
-        return 0;
+        return 1;
 
     default:
         {
@@ -118,7 +126,36 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
-void OnSize(HWND hwnd, UINT flag, int width, int height)
+BOOL CALLBACK myInfoEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM data)
+{
+    MONITORINFOEX iMonitor;
+    iMonitor.cbSize = sizeof(MONITORINFOEX);
+    GetMonitorInfo(hMonitor, &iMonitor);
+
+    if (iMonitor.dwFlags & MONITORINFOF_PRIMARY) 
+        printf("Primary\n");
+
+    printf("Device name is: %S\n", iMonitor.szDevice);
+
+    LONG width = rect->right - rect->left;
+    LONG height = rect->bottom - rect->top;
+    printf("Device resolution is: %i x %i\n\n", width, height);
+    return 1;
+}
+
+BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data)
+{
+    WINDOWINFO winInfo;
+    winInfo.cbSize = sizeof(WINDOWINFO);
+
+    GetWindowInfo(hwnd, &winInfo);
+    printf("Window position: %i x %i\n\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
+
+    return 1;
+}
+
+
+void OnSize(HWND hwnd, UINT flag, int width, int height) 
 {
     //Do stuff
 }
