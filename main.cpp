@@ -6,14 +6,72 @@
 #include <fstream>
 #include <Windows.h>
 
+// Forward declarations
 void OnSize(HWND hwnd, UINT flag, int width, int height);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPAram);
-
 BOOL CALLBACK myInfoEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM data);
-
 BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data);
 
+
+//
+// Class to store information about a window. Holds a handle to the window.
+//
+//  bool SetData(HWND hwnd)
+//  Saves the Windows current placement state
+//
+//  bool RestoreWindow()
+//  Restore the window to its' saved state
+//
+class WindowData
+{
+    HWND winHwnd;
+    WINDOWPLACEMENT winPlace;
+
+public:
+    WindowData() 
+    {
+        winHwnd = NULL;
+        memset(&winPlace, 0, sizeof(WINDOWPLACEMENT));
+    }
+
+    bool SetData(HWND hwnd)
+    {
+        winHwnd = hwnd;
+        winPlace.length = sizeof(WINDOWPLACEMENT);
+        GetWindowPlacement(hwnd, &winPlace);
+        return true;
+    }
+
+    bool RestoreWindow() 
+    {
+
+    }
+
+    bool DumpWindowInfo()
+    {
+        WINDOWPLACEMENT winPlace;
+            WINDOWINFO winInfo;
+            winInfo.cbSize = sizeof(WINDOWINFO);
+            GetWindowInfo(winHwnd, &winInfo);
+
+            // LPWSTR atomName[256];
+            // GetAtomName(winInfo.atomWindowType, atomName, 256);
+                        
+            
+            printf("Window position: %i x %i\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
+            printf( "window size: %i x %i\n\n", 
+                    winInfo.rcWindow.right - winInfo.rcWindow.left, 
+                    winInfo.rcWindow.bottom - winInfo.rcWindow.top);
+
+    }
+};
+
+
+// Global variables
 const wchar_t CLASS_NAME[] = L"Sample Window Class";
+WindowData windowDataList[32];
+int counter;
+
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int cmdShow) {
     std::ofstream logFile;
@@ -51,12 +109,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     EnumDisplayMonitors(NULL, NULL, &myInfoEnumProc, NULL);
 
     std::cout << std::endl << "Window info:" << std::endl;
-    EnumWindows(&myEnumWindowProc, NULL);
+    counter = 0;
+    EnumDesktopWindows(NULL, &myEnumWindowProc, NULL);
 
-    //Attempts to get display devices
-    DISPLAY_DEVICE myDisplay;
-    myDisplay.cb = sizeof(DISPLAY_DEVICE);
-    
+    for (int idx = 0; idx < sizeof(windowDataList)/sizeof(windowDataList[0]); idx++)
+    {
+        windowDataList[idx].DumpWindowInfo();
+    }
+
+
     ShowWindow(hwnd, cmdShow);
 
     MSG msg = {};
@@ -145,12 +206,16 @@ BOOL CALLBACK myInfoEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM dat
 
 BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data)
 {
-    WINDOWINFO winInfo;
-    winInfo.cbSize = sizeof(WINDOWINFO);
-
-    GetWindowInfo(hwnd, &winInfo);
-    printf("Window position: %i x %i\n\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
-
+    if (IsWindowVisible(hwnd) && GetParent(hwnd) == NULL)
+    {
+        DWORD dwExStyle = (DWORD)GetWindowLong(hwnd, GWL_EXSTYLE);
+        if (((dwExStyle & WS_EX_OVERLAPPEDWINDOW) != 0) || ((dwExStyle & WS_EX_APPWINDOW) != 0) && ((dwExStyle & WS_EX_NOACTIVATE) == 0))
+        {
+            windowDataList[counter].SetData(hwnd);            
+            // windowDataList[counter].DumpWindowInfo();
+            counter++;
+        }
+    }
     return 1;
 }
 
