@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <Windows.h>
 
 // Forward declarations
@@ -11,6 +12,7 @@ void OnSize(HWND hwnd, UINT flag, int width, int height);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPAram);
 BOOL CALLBACK myInfoEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM data);
 BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data);
+void RestoreWindows();
 
 
 //
@@ -42,40 +44,42 @@ public:
         return true;
     }
 
-    bool RestoreWindow() 
+    bool RestoreWindow()
     {
-
+        return SetWindowPlacement(winHwnd, &winPlace);
     }
 
     bool DumpWindowInfo()
     {
         WINDOWPLACEMENT winPlace;
-            WINDOWINFO winInfo;
-            winInfo.cbSize = sizeof(WINDOWINFO);
-            GetWindowInfo(winHwnd, &winInfo);
+        WINDOWINFO winInfo;
+        winInfo.cbSize = sizeof(WINDOWINFO);
+        GetWindowInfo(winHwnd, &winInfo);
 
-            // LPWSTR atomName[256];
-            // GetAtomName(winInfo.atomWindowType, atomName, 256);
-                        
-            
-            printf("Window position: %i x %i\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
-            printf( "window size: %i x %i\n\n", 
-                    winInfo.rcWindow.right - winInfo.rcWindow.left, 
-                    winInfo.rcWindow.bottom - winInfo.rcWindow.top);
+        int bufSize = 512;
+        char appName[bufSize];
+        SendMessage(winHwnd, WM_GETTEXT, bufSize, (LPARAM)appName);
+                            
+        printf("%S\n", appName);
+        printf("Window position: %i x %i\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
+        printf( "window size: %i x %i\n\n", 
+                winInfo.rcWindow.right - winInfo.rcWindow.left, 
+                winInfo.rcWindow.bottom - winInfo.rcWindow.top);
 
+        return true;
     }
 };
 
 
 // Global variables
 const wchar_t CLASS_NAME[] = L"Sample Window Class";
-WindowData windowDataList[32];
-int counter;
+std::vector<WindowData> windowDataList;
 
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int cmdShow) {
     std::ofstream logFile;
     
+
     logFile.open("log.txt");
     if (!logFile.is_open()) {
         std::cout << "Error: file not opened." << std::endl;
@@ -109,10 +113,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     EnumDisplayMonitors(NULL, NULL, &myInfoEnumProc, NULL);
 
     std::cout << std::endl << "Window info:" << std::endl;
-    counter = 0;
-    EnumDesktopWindows(NULL, &myEnumWindowProc, NULL);
+    EnumDesktopWindows(NULL, &myEnumWindowProc, reinterpret_cast<LPARAM>(&windowDataList));
 
-    for (int idx = 0; idx < sizeof(windowDataList)/sizeof(windowDataList[0]); idx++)
+    for (int idx = 0; idx < windowDataList.size(); idx++)
     {
         windowDataList[idx].DumpWindowInfo();
     }
@@ -129,10 +132,8 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
         DispatchMessage(&msg);
 
     }
-        
-
     
-
+    
     logFile.close();
     return 0;
 }
@@ -167,7 +168,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             std::cout << "Suspended" << std::endl;
         } else if (wParam == PBT_APMRESUMEAUTOMATIC) {
             std::cout << "Resumed" << std::endl;
-        } 
+        }
+        return 1;
+
+    case WM_DISPLAYCHANGE:
+        {
+            int bitsPerPix = (UINT)wParam;
+            int width = LOWORD(lParam);
+            int height = HIWORD(lParam);
+            std::cout << "Display change message" << std::endl;
+            std::cout << "New resolution: " << width << " x " << height << std::endl << std::endl;
+
+            if ((width == 2560) && (height == 1440))
+            {
+                std::cout << "Original resolution" << std::endl;
+                RestoreWindows();
+            }
+        }
         return 1;
 
     case WM_CLOSE:
@@ -204,19 +221,29 @@ BOOL CALLBACK myInfoEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM dat
     return 1;
 }
 
-BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data)
+BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM lParam)
 {
     if (IsWindowVisible(hwnd) && GetParent(hwnd) == NULL)
     {
         DWORD dwExStyle = (DWORD)GetWindowLong(hwnd, GWL_EXSTYLE);
         if (((dwExStyle & WS_EX_OVERLAPPEDWINDOW) != 0) || ((dwExStyle & WS_EX_APPWINDOW) != 0) && ((dwExStyle & WS_EX_NOACTIVATE) == 0))
         {
-            windowDataList[counter].SetData(hwnd);            
-            // windowDataList[counter].DumpWindowInfo();
-            counter++;
+            WindowData thisWindow;
+            thisWindow.SetData(hwnd);
+
+            auto pWindowDataList = reinterpret_cast<std::vector<WindowData>*>(lParam);
+            pWindowDataList->push_back(thisWindow);
         }
     }
     return 1;
+}
+
+void RestoreWindows() 
+{
+    for (int idx = 0; idx < windowDataList.size(); idx++)
+    {        
+        windowDataList[idx].RestoreWindow();
+    }
 }
 
 
