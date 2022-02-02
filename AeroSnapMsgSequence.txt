@@ -1,0 +1,22 @@
+256: WM_KEYDOWN				:Pressing windows key
+
+36: WM_GETMINMAXINFO		:Sent to window that size or position is about to change
+70: WM_WINDOWPOSCHANGING	:Sent to a window whose size, position, or place in the Z order is about to change
+131: WM_NCCALCSIZE			:Sent when the size and position of a window's client area must be calculated
+133: WM_NCPAINT				:Sent to a window when its frame must be painted
+20: WM_ERASEBKGND			:Sent when the window background must be erased
+71: WM_WINDOWPOSCHANGED		:Sent to a window whose size, position, or place in the Z order has changed
+
+3: WM_MOVE					:Sent after a window has been moved.
+5: WM_SIZE					:Sent to a window after its size has changed.
+15: WM_PAINT				:Sent when the system or another application makes a request to paint a portion of an application's window
+
+257: WM_KEYUP				:Posted to the window with the keyboard focus when a nonsystem key is released
+257: WM_KEYUP				:Posted to the window with the keyboard focus when a nonsystem key is released
+
+134: WM_NCACTIVATE			:Sent to a window when its nonclient area needs to be changed to indicate an active or inactive state
+6: WM_ACTIVATE				:Sent to both the window being activated and the window being deactivated
+28: WM_ACTIVATEAPP			:Sent when a window belonging to a different application than the active window is about to be activated
+8: WM_KILLFOCUS				:Sent to a window immediately before it loses the keyboard focus
+641: WM_IME_SETCONTEXT		:Sent to an application when a window is activated
+642: WM_IME_NOTIFY			:Sent to an application to notify it of changes to the IME window

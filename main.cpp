@@ -30,12 +30,14 @@ class WindowData
 {
     HWND winHwnd;
     WINDOWPLACEMENT winPlace;
+    WINDOWINFO winInfo;
 
 public:
     WindowData() 
     {
         winHwnd = NULL;
         memset(&winPlace, 0, sizeof(WINDOWPLACEMENT));
+        memset(&winInfo, 0, sizeof(WINDOWINFO));
     }
 
     bool SetData(HWND hwnd)
@@ -43,28 +45,75 @@ public:
         winHwnd = hwnd;
         winPlace.length = sizeof(WINDOWPLACEMENT);
         GetWindowPlacement(hwnd, &winPlace);
+        winInfo.cbSize = sizeof(WINDOWINFO);
+        GetWindowInfo(winHwnd, &winInfo);
         return true;
     }
 
-    bool RestoreWindow()
+    void RestoreWindow()
     {
-        return SetWindowPlacement(winHwnd, &winPlace);
+        if (IsWindow(winHwnd))
+        {
+            switch (winPlace.showCmd)
+            {
+            case SW_MAXIMIZE:
+                winPlace.showCmd = SW_SHOWNOACTIVATE;
+                SetWindowPlacement(winHwnd, &winPlace);
+                winPlace.showCmd = SW_MAXIMIZE;
+                break;
+
+            case SW_MINIMIZE:
+            case SW_SHOWMINIMIZED:
+                winPlace.showCmd = SW_SHOWMINNOACTIVE;
+                break;
+
+            case SW_NORMAL:
+                winPlace.showCmd = SW_SHOWNOACTIVATE;
+                break;
+            
+            default:
+                break;
+            }
+            SetWindowPlacement(winHwnd, &winPlace);
+
+            SetWindowPos(   winHwnd, 
+                            HWND_TOP, 
+                            winInfo.rcWindow.left, 
+                            winInfo.rcWindow.top, 
+                            winInfo.rcWindow.right - winInfo.rcWindow.left, 
+                            winInfo.rcWindow.bottom - winInfo.rcWindow.top,
+                            SWP_ASYNCWINDOWPOS | SWP_NOZORDER);
+        }
     }
 
     bool DumpWindowInfo()
     {
-        WINDOWPLACEMENT winPlace;
-        WINDOWINFO winInfo;
-        winInfo.cbSize = sizeof(WINDOWINFO);
-        GetWindowInfo(winHwnd, &winInfo);
-
         int bufSize = 512;
         char appName[bufSize];
         SendMessage(winHwnd, WM_GETTEXT, bufSize, (LPARAM)appName);
-                            
         printf("%S\n", appName);
-        printf("Window position: %i x %i\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
-        printf( "window size: %i x %i\n\n", 
+
+        TCHAR winClass[40];
+        RealGetWindowClass(winHwnd, winClass, 40);
+        printf("Class: %S\n", winClass);
+
+        GetWindowPlacement(winHwnd, &winPlace);
+        if (winPlace.showCmd == SW_MAXIMIZE)
+            printf("Is maximized\n");
+        printf("winPlace flags: %i\n", winPlace.flags);
+        printf("winPlace showCmd: %i\n", winPlace.showCmd);
+        printf("winPlace ptMinPosition: (%i,%i)\n", winPlace.ptMinPosition.x, winPlace.ptMinPosition.y);
+        printf("winPlace ptMaxPosition: (%i,%i)\n", winPlace.ptMaxPosition.x, winPlace.ptMaxPosition.y);
+        printf("winPlace rcNormalPosition: (%i,%i), (%i,%i)\n", 
+                winPlace.rcNormalPosition.top, winPlace.rcNormalPosition.left, 
+                winPlace.rcNormalPosition.bottom, winPlace.rcNormalPosition.right);
+        printf("winPlace size: %i x %i\n", 
+                winPlace.rcNormalPosition.right - winPlace.rcNormalPosition.left, 
+                winPlace.rcNormalPosition.bottom - winPlace.rcNormalPosition.top);
+
+        GetWindowInfo(winHwnd, &winInfo);
+        printf("winInfo position: %i x %i\n", winInfo.rcWindow.left, winInfo.rcWindow.top);
+        printf("winInfo size: %i x %i\n\n", 
                 winInfo.rcWindow.right - winInfo.rcWindow.left, 
                 winInfo.rcWindow.bottom - winInfo.rcWindow.top);
 
@@ -115,42 +164,26 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     std::cout << std::endl << "Display info:" << std::endl;
     EnumDisplayMonitors(NULL, NULL, &myMonitorEnumProc, reinterpret_cast<LPARAM>(&savedMonitorSetup));
 
-    for (int idx = 0; idx < savedMonitorSetup.size(); idx++)
-    {
-        if (savedMonitorSetup[idx].dwFlags & MONITORINFOF_PRIMARY) 
-            printf("Primary\n");
+    // for (int idx = 0; idx < savedMonitorSetup.size(); idx++)
+    // {
+    //     if (savedMonitorSetup[idx].dwFlags & MONITORINFOF_PRIMARY) 
+    //         printf("Primary\n");
 
-        printf("Device name is: %S\n", savedMonitorSetup[idx].szDevice);
+    //     printf("Device name is: %S\n", savedMonitorSetup[idx].szDevice);
 
-        LONG width = savedMonitorSetup[idx].rcMonitor.right - savedMonitorSetup[idx].rcMonitor.left;
-        LONG height = savedMonitorSetup[idx].rcMonitor.bottom - savedMonitorSetup[idx].rcMonitor.top;
-        printf("Device resolution is: %i x %i\n\n", width, height);
-    }
+    //     LONG width = savedMonitorSetup[idx].rcMonitor.right - savedMonitorSetup[idx].rcMonitor.left;
+    //     LONG height = savedMonitorSetup[idx].rcMonitor.bottom - savedMonitorSetup[idx].rcMonitor.top;
+    //     printf("Device resolution is: %i x %i\n\n", width, height);
+    // }
 
-    // Test monitor compare
-    std::cout << std::endl << "Comparing: " << std::endl;
-    std::vector<MONITORINFOEX> tempMonitorSetup;
-    EnumDisplayMonitors(NULL, NULL, &myMonitorEnumProc, reinterpret_cast<LPARAM>(&tempMonitorSetup));
-
-    for (int idx = 0; idx < tempMonitorSetup.size(); idx++)
-    {
-        if (CompareMonitorSetup(&savedMonitorSetup[idx], &tempMonitorSetup[idx])) 
-            printf("Same rectangles\n");
-            printf("Upper left: (%i, %i), Lower right: (%i, %i)\n", 
-                                    savedMonitorSetup[idx].rcMonitor.left,
-                                    savedMonitorSetup[idx].rcMonitor.top,
-                                    savedMonitorSetup[idx].rcMonitor.right,
-                                    savedMonitorSetup[idx].rcMonitor.bottom);
-    }
-    
     // Grab window stuff
     std::cout << std::endl << "Window info:" << std::endl;
     EnumDesktopWindows(NULL, &myEnumWindowProc, reinterpret_cast<LPARAM>(&windowDataList));
 
-    // for (int idx = 0; idx < windowDataList.size(); idx++)
-    // {
-    //     windowDataList[idx].DumpWindowInfo();
-    // }
+    for (int idx = 0; idx < windowDataList.size(); idx++)
+    {
+        windowDataList[idx].DumpWindowInfo();
+    }
 
 
     ShowWindow(hwnd, cmdShow);
@@ -172,6 +205,9 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+
+    // std::cout << "Message: " << uMsg << std::endl;
+
     switch (uMsg)
     {
     case WM_SIZE:
@@ -226,6 +262,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (sameSettings)
                 {
                     std::cout << "Original resolution" << std::endl;
+                    Sleep(2000);
+
                     RestoreWindows();
                 }                
             }
