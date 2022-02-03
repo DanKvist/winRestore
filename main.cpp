@@ -13,7 +13,9 @@ void OnSize(HWND hwnd, UINT flag, int width, int height);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPAram);
 BOOL CALLBACK myMonitorEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM data);
 BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data);
-bool CompareMonitorSetup(const MONITORINFOEX *monitor1, const MONITORINFOEX *monitor2);
+// void CALLBACK HookProcCallback(HWINEVENTHOOK hook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD idEventThread, DWORD dwmsEventTime);
+bool CompareMONITORINFOEX(const MONITORINFOEX *monitor1, const MONITORINFOEX *monitor2);
+bool compareMonitorSetting(const std::vector<MONITORINFOEX> *setting1, const std::vector<MONITORINFOEX> *setting2);
 void RestoreWindows();
 
 
@@ -126,6 +128,8 @@ public:
 const wchar_t CLASS_NAME[] = L"Sample Window Class";
 std::vector<WindowData> windowDataList;
 std::vector<MONITORINFOEX> savedMonitorSetup;
+UINT_PTR myTimer;
+bool pollWindowSetup;
 
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int cmdShow) {
@@ -185,13 +189,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
         windowDataList[idx].DumpWindowInfo();
     }
 
+    SetTimer(hwnd, myTimer, 10000, NULL);
 
     ShowWindow(hwnd, cmdShow);
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
 //        std::cout << "Hello sir!" << std::endl;
-//        Sleep(2000);
 
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -217,7 +221,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             OnSize(hwnd, (UINT)wParam, width, height);
         }
-        return 1;
+        return 0;
 
     case WM_PAINT:
         {
@@ -228,7 +232,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             EndPaint(hwnd, &ps);
         }
-        return 1;
+        return 0;
 
     case WM_POWERBROADCAST:
         if (wParam == PBT_APMSUSPEND) 
@@ -237,7 +241,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         } else if (wParam == PBT_APMRESUMEAUTOMATIC) {
             std::cout << "Resumed" << std::endl;
         }
-        return 1;
+        return 0;
 
     case WM_DISPLAYCHANGE:
         {
@@ -248,43 +252,44 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             int height = HIWORD(lParam);
             std::cout << "Display change message" << std::endl;
 
-            if (savedMonitorSetup.size() == tempMonitorSetup.size())
+            if (compareMonitorSetting(&savedMonitorSetup, &tempMonitorSetup))
             {
-                std::cout << "Same monitor count" << std::endl;
+                std::cout << "Original resolution" << std::endl;
+                Sleep(2000);
 
-                bool sameSettings = true;
-                for (int idx = 0; idx < savedMonitorSetup.size(); idx++)
-                {
-                    if (!CompareMonitorSetup(&savedMonitorSetup[idx], &tempMonitorSetup[idx]))
-                        sameSettings = false;
-                }
-
-                if (sameSettings)
-                {
-                    std::cout << "Original resolution" << std::endl;
-                    Sleep(2000);
-
-                    RestoreWindows();
-                }                
+                RestoreWindows();
+                pollWindowSetup = true;
+            } else {
+                std::cout << "Another resolution" << std::endl;
+                pollWindowSetup = false;
             }
         }
-        return 1;
+        return 0;
+
+    case WM_TIMER:
+        if (pollWindowSetup)
+        {
+            std::cout << "Polled the windows" << std::endl;
+            windowDataList.erase(windowDataList.begin(), windowDataList.end());
+            EnumDesktopWindows(NULL, &myEnumWindowProc, reinterpret_cast<LPARAM>(&windowDataList));
+        }
+
+        return 0;
 
     case WM_CLOSE:
         if (MessageBox(hwnd, L"Really quit?", L"My application", MB_OKCANCEL) == IDOK)
         {
             DestroyWindow(hwnd);
         }
-        return 1;
+        return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
-        return 1;
+        return 0;
 
     default:
-        {
-            return DefWindowProc(hwnd, uMsg, wParam, lParam);
-        }        
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);   
     }
+    return 0;
 }
 
 BOOL CALLBACK myMonitorEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam)
@@ -324,7 +329,21 @@ void RestoreWindows()
     }
 }
 
-bool CompareMonitorSetup(const MONITORINFOEX *monitor1, const MONITORINFOEX *monitor2)
+bool compareMonitorSetting(const std::vector<MONITORINFOEX> *setting1, const std::vector<MONITORINFOEX> *setting2)
+{
+    if (setting1->size() != setting2->size())
+        return false;
+
+    for (int idx = 0; idx < setting1->size(); idx++)
+    {
+        if (!CompareMONITORINFOEX(&(setting1->at(idx)), &(setting2->at(idx))))
+            return false;
+    }
+
+    return true;
+}
+
+bool CompareMONITORINFOEX(const MONITORINFOEX *monitor1, const MONITORINFOEX *monitor2)
 {
     return (    EqualRect(&monitor1->rcMonitor, &monitor2->rcMonitor)
                 && (monitor1->dwFlags == monitor2->dwFlags)
