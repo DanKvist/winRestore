@@ -8,12 +8,13 @@
 #include <vector>
 #include <Windows.h>
 
+#include "resource.h"
+
 // Forward declarations
 void OnSize(HWND hwnd, UINT flag, int width, int height);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPAram);
 BOOL CALLBACK myMonitorEnumProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM data);
 BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data);
-// void CALLBACK HookProcCallback(HWINEVENTHOOK hook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD idEventThread, DWORD dwmsEventTime);
 bool CompareMONITORINFOEX(const MONITORINFOEX *monitor1, const MONITORINFOEX *monitor2);
 bool compareMonitorSetting(const std::vector<MONITORINFOEX> *setting1, const std::vector<MONITORINFOEX> *setting2);
 void RestoreWindows();
@@ -142,12 +143,22 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
         return 1;
     }
 
-    WNDCLASS wc = {};
-    wc.lpfnWndProc = WindowProc;
-    wc.hInstance = hInstance;
-    wc.lpszClassName = CLASS_NAME;
+    WNDCLASSEX wcex = {};
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style;
+    wcex.lpfnWndProc = WindowProc;;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);;
+    wcex.hbrBackground;
+    wcex.lpszMenuName;
+    wcex.lpszClassName = CLASS_NAME;
+    wcex.hIconSm = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
 
-    RegisterClass(&wc);
+
+    RegisterClassEx(&wcex);
 
     HWND hwnd = CreateWindowEx(
         0,
@@ -195,7 +206,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
-//        std::cout << "Hello sir!" << std::endl;
 
         TranslateMessage(&msg);
         DispatchMessage(&msg);

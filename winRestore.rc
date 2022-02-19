@@ -1,0 +1,8 @@
+#include <windows.h>
+
+#ifndef _resource_rc
+#define _resource_rc
+
+IDI_ICON ICON "small.ico"
+
+#endif
