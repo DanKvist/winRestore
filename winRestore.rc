@@ -3,6 +3,6 @@
 #ifndef _resource_rc
 #define _resource_rc
 
-IDI_ICON ICON "small.ico"
+IDI_ICON ICON "icon.ico"
 
 #endif
