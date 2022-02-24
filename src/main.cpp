@@ -129,19 +129,14 @@ public:
 const wchar_t CLASS_NAME[] = L"Sample Window Class";
 std::vector<WindowData> windowDataList;
 std::vector<MONITORINFOEX> savedMonitorSetup;
+NOTIFYICONDATA niData;
 UINT_PTR myTimer;
 bool pollWindowSetup;
 
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int cmdShow) {
-    std::ofstream logFile;
+    HICON hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
     
-
-    logFile.open("log.txt");
-    if (!logFile.is_open()) {
-        std::cout << "Error: file not opened." << std::endl;
-        return 1;
-    }
 
     WNDCLASSEX wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEX);
@@ -150,15 +145,15 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
-    wcex.hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
-    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);;
+    wcex.hIcon = hIcon;
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground;
     wcex.lpszMenuName;
     wcex.lpszClassName = CLASS_NAME;
-    wcex.hIconSm = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
-
+    wcex.hIconSm = hIcon;
 
     RegisterClassEx(&wcex);
+
 
     HWND hwnd = CreateWindowEx(
         0,
@@ -174,6 +169,17 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
 
     if (hwnd == NULL)
         return 1;
+
+    niData.cbSize = sizeof(niData);
+    niData.hWnd = hwnd;
+    niData.uID = 1;
+    niData.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
+    niData.uCallbackMessage;
+    niData.hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+
+    Shell_NotifyIcon(NIM_ADD, &niData);
+
+
 
     // Grab monitor stuff
     std::cout << std::endl << "Display info:" << std::endl;
@@ -202,7 +208,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
 
     SetTimer(hwnd, myTimer, 10000, NULL);
 
-    ShowWindow(hwnd, cmdShow);
+    // ShowWindow(hwnd, cmdShow);
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -213,7 +219,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     }
     
     
-    logFile.close();
     return 0;
 }
 
@@ -293,6 +298,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         return 0;
     case WM_DESTROY:
+        Shell_NotifyIcon(NIM_DELETE, &niData);
         PostQuitMessage(0);
         return 0;
 
