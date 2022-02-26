@@ -1,4 +1,4 @@
-winRestore: build/main.o build/resource.res
+winRestore: main.o resource.res
 	g++ -o winRestore build/main.o build/resource.res -o bin/winRestore
 
 main.o: src/main.cpp

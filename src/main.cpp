@@ -6,9 +6,13 @@
 #include <fstream>
 #include <cstring>
 #include <vector>
+
 #include <Windows.h>
+#include <commctrl.h>
 
 #include "resource.h"
+
+#define WM_USER_TRAY_ICON (WM_USER + 0x0100)
 
 // Forward declarations
 void OnSize(HWND hwnd, UINT flag, int width, int height);
@@ -170,16 +174,21 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     if (hwnd == NULL)
         return 1;
 
+    ZeroMemory(&niData, sizeof(NOTIFYICONDATA));
     niData.cbSize = sizeof(niData);
     niData.hWnd = hwnd;
     niData.uID = 1;
-    niData.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-    niData.uCallbackMessage;
+    niData.uFlags = NIF_ICON | NIF_MESSAGE;
+    niData.uCallbackMessage = WM_USER_TRAY_ICON;
     niData.hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+    // LoadIconMetric(hInstance, MAKEINTRESOURCE(IDI_ICON), LIM_SMALL, &niData.hIcon);
+    niData.uVersion = NOTIFYICON_VERSION_4;
 
     Shell_NotifyIcon(NIM_ADD, &niData);
+    Shell_NotifyIcon(NIM_SETVERSION, &niData);
 
 
+    printf("Dan testing print!");
 
     // Grab monitor stuff
     std::cout << std::endl << "Display info:" << std::endl;
@@ -201,14 +210,14 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     std::cout << std::endl << "Window info:" << std::endl;
     EnumDesktopWindows(NULL, &myEnumWindowProc, reinterpret_cast<LPARAM>(&windowDataList));
 
-    for (int idx = 0; idx < windowDataList.size(); idx++)
-    {
-        windowDataList[idx].DumpWindowInfo();
-    }
+    // for (int idx = 0; idx < windowDataList.size(); idx++)
+    // {
+    //     windowDataList[idx].DumpWindowInfo();
+    // }
 
     SetTimer(hwnd, myTimer, 10000, NULL);
 
-    // ShowWindow(hwnd, cmdShow);
+    ShowWindow(hwnd, cmdShow);
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -277,6 +286,26 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             } else {
                 std::cout << "Another resolution" << std::endl;
                 pollWindowSetup = false;
+            }
+        }
+        return 0;
+
+    case WM_USER_TRAY_ICON:
+        {
+            switch (LOWORD(lParam))
+            {
+            case WM_LBUTTONUP:
+                std::cout << "Left clicked the tray icon!" << std::endl;
+                ShowWindow(hwnd, SW_SHOW);
+                break;
+
+            case WM_RBUTTONUP:
+                std::cout << "Right clicked the tray icon!" << std::endl;
+                ShowWindow(hwnd, SW_HIDE);
+                break;
+            
+            default:
+                break;
             }
         }
         return 0;
