@@ -1,8 +1,9 @@
 #ifndef RESOURCE_RC
 #define RESOURCE_RC
 
-#include <windows.h>
+#include "..//src//resource.h"
 
+#include <windows.h>
 
 IDI_ICON ICON "icon.ico"
 

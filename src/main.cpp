@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <Windows.h>
-#include <commctrl.h>
 
 #include "resource.h"
 
@@ -139,9 +138,8 @@ bool pollWindowSetup;
 
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int cmdShow) {
-    HICON hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
     
-
+    
     WNDCLASSEX wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style;
@@ -149,12 +147,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
-    wcex.hIcon = hIcon;
+    wcex.hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground;
     wcex.lpszMenuName;
     wcex.lpszClassName = CLASS_NAME;
-    wcex.hIconSm = hIcon;
+    wcex.hIconSm = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
 
     RegisterClassEx(&wcex);
 
@@ -178,10 +176,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     niData.cbSize = sizeof(niData);
     niData.hWnd = hwnd;
     niData.uID = 1;
-    niData.uFlags = NIF_ICON | NIF_MESSAGE;
+    niData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
     niData.uCallbackMessage = WM_USER_TRAY_ICON;
-    niData.hIcon = (HICON) LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
-    // LoadIconMetric(hInstance, MAKEINTRESOURCE(IDI_ICON), LIM_SMALL, &niData.hIcon);
+    niData.hIcon = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR | LR_SHARED | LR_DEFAULTSIZE);
+    // niData.hIcon = (HICON)LoadImage(NULL, IDI_WARNING, IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR | LR_SHARED | LR_DEFAULTSIZE);
+    memcpy(niData.szTip, L"My tooltip!", 128);
     niData.uVersion = NOTIFYICON_VERSION_4;
 
     Shell_NotifyIcon(NIM_ADD, &niData);

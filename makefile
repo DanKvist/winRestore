@@ -1,5 +1,5 @@
 winRestore: main.o resource.res
-	g++ -o winRestore build/main.o build/resource.res -o bin/winRestore
+	g++ build/main.o build/resource.res -o bin/winRestore
 
 main.o: src/main.cpp
 	g++ -c src/main.cpp -o build/main.o
