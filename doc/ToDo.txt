@@ -1,0 +1,13 @@
+UI:
+- Save screen configuration button
+- Message output text scroller
+
+
+
+
+Backend:
+- Save AeroSnap state of windows & restore it
+- Fix the location of the notification menu
+
+
+

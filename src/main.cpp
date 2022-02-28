@@ -7,7 +7,7 @@
 #include <cstring>
 #include <vector>
 
-#include <Windows.h>
+#include <windows.h>
 
 #include "resource.h"
 
@@ -21,6 +21,7 @@ BOOL CALLBACK myEnumWindowProc(HWND hwnd, LPARAM data);
 bool CompareMONITORINFOEX(const MONITORINFOEX *monitor1, const MONITORINFOEX *monitor2);
 bool compareMonitorSetting(const std::vector<MONITORINFOEX> *setting1, const std::vector<MONITORINFOEX> *setting2);
 void RestoreWindows();
+void ShowContextMenu(HWND hwnd, POINT pt);
 
 
 //
@@ -129,6 +130,7 @@ public:
 
 
 // Global variables
+HINSTANCE g_hInst = NULL;
 const wchar_t CLASS_NAME[] = L"Sample Window Class";
 std::vector<WindowData> windowDataList;
 std::vector<MONITORINFOEX> savedMonitorSetup;
@@ -138,8 +140,8 @@ bool pollWindowSetup;
 
 
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int cmdShow) {
-    
-    
+    g_hInst = hInstance;    
+
     WNDCLASSEX wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style;
@@ -178,16 +180,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
     niData.uID = 1;
     niData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
     niData.uCallbackMessage = WM_USER_TRAY_ICON;
-    niData.hIcon = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR | LR_SHARED | LR_DEFAULTSIZE);
-    // niData.hIcon = (HICON)LoadImage(NULL, IDI_WARNING, IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR | LR_SHARED | LR_DEFAULTSIZE);
+    niData.hIcon = (HICON)LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR);
     memcpy(niData.szTip, L"My tooltip!", 128);
     niData.uVersion = NOTIFYICON_VERSION_4;
 
     Shell_NotifyIcon(NIM_ADD, &niData);
     Shell_NotifyIcon(NIM_SETVERSION, &niData);
-
-
-    printf("Dan testing print!");
 
     // Grab monitor stuff
     std::cout << std::endl << "Display info:" << std::endl;
@@ -298,16 +296,39 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 ShowWindow(hwnd, SW_SHOW);
                 break;
 
-            case WM_RBUTTONUP:
-                std::cout << "Right clicked the tray icon!" << std::endl;
-                ShowWindow(hwnd, SW_HIDE);
-                break;
-            
+            case WM_CONTEXTMENU:
+            {
+                std::cout << "User desired context menu!" << std::endl;
+                const POINT pt = {LOWORD(wParam), HIWORD(wParam)};
+                std::cout << "Pressed at (" << pt.x << ", " << pt.y << ")" << std::endl;
+                ShowContextMenu(hwnd, pt);
+            }                
+            break;
+
             default:
                 break;
             }
         }
         return 0;
+
+    case WM_COMMAND:
+    {
+        int command = LOWORD(wParam);
+        switch (command)
+        {
+        case IDM_EXIT:
+            DestroyWindow(hwnd);
+            break;
+
+        case IDM_ABOUT:
+            MessageBox(hwnd, L"This is a simple program designed to\naid in window management with dumb monitors", L"About winRestore", MB_OK | MB_ICONINFORMATION);
+            break;
+        
+        default:
+            std::cout << "Unknown message received" << std::endl;
+            break;
+        }
+    }
 
     case WM_TIMER:
         if (pollWindowSetup)
@@ -320,11 +341,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_CLOSE:
-        if (MessageBox(hwnd, L"Really quit?", L"My application", MB_OKCANCEL) == IDOK)
-        {
-            DestroyWindow(hwnd);
-        }
+        ShowWindow(hwnd, SW_HIDE);
         return 0;
+
     case WM_DESTROY:
         Shell_NotifyIcon(NIM_DELETE, &niData);
         PostQuitMessage(0);
@@ -399,4 +418,32 @@ bool CompareMONITORINFOEX(const MONITORINFOEX *monitor1, const MONITORINFOEX *mo
 void OnSize(HWND hwnd, UINT flag, int width, int height) 
 {
     //Do stuff
+}
+
+void ShowContextMenu(HWND hwnd, POINT pt)
+{
+    HMENU hMenu = LoadMenu(g_hInst, MAKEINTRESOURCE(IDC_CONTEXTMENU));
+    if (hMenu)
+    {
+        HMENU hSubMenu = GetSubMenu(hMenu, 0);
+        if (hSubMenu)
+        {
+            // our window must be foreground before calling TrackPopupMenu or the menu will not disappear when the user clicks away
+            SetForegroundWindow(hwnd);
+
+            // respect menu drop alignment
+            UINT uFlags = TPM_RIGHTBUTTON;
+            if (GetSystemMetrics(SM_MENUDROPALIGNMENT) != 0)
+            {
+                uFlags |= TPM_RIGHTALIGN;
+            }
+            else
+            {
+                uFlags |= TPM_LEFTALIGN;
+            }
+
+            TrackPopupMenuEx(hSubMenu, uFlags, pt.x, pt.y, hwnd, NULL);
+        }
+        DestroyMenu(hMenu);
+    }
 }
