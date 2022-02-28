@@ -6,5 +6,6 @@
 
 #define IDM_ABOUT 2001
 #define IDM_EXIT 2002
+#define IDM_SAVE 2003
 
 #endif

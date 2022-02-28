@@ -1,13 +1,18 @@
 UI:
 - Save screen configuration button
 - Message output text scroller
-
+- Better icons (tailored for each size)
+- Program menu
 
 
 
 Backend:
 - Save AeroSnap state of windows & restore it
-- Fix the location of the notification menu
 
+
+
+Other:
+- Proper makefile (that don't rebuild every time)
+- File orginization and cleanup
 
 

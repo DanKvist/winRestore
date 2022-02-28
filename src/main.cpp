@@ -164,7 +164,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevINstance, LPSTR lpCmdLine, int c
         CLASS_NAME,
         L"Learn to Program Windows",
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
         NULL,
         NULL,
         hInstance,
@@ -235,6 +235,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     switch (uMsg)
     {
+    case WM_CREATE:
+        {
+            CreateWindow(L"BUTTON", L"Save", WS_VISIBLE | WS_CHILD, 20, 50, 80, 25, hwnd, (HMENU) IDM_SAVE, NULL, NULL);
+
+            HWND hwndEdit;
+            hwndEdit = CreateWindow(L"EDIT", L"DebugWin", WS_BORDER | WS_VISIBLE | WS_CHILD | WS_VSCROLL | ES_MULTILINE | ES_READONLY, 150, 20, 200, 300, hwnd, NULL, NULL, NULL);
+
+            
+            SetWindowText(hwndEdit, L"myTestString");
+        }
+        return 0;
     case WM_SIZE:
         {
             int width = LOWORD(lParam);
@@ -299,10 +310,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             case WM_CONTEXTMENU:
             {
                 std::cout << "User desired context menu!" << std::endl;
-                const POINT pt = {LOWORD(wParam), HIWORD(wParam)};
+                POINT pt;
+                GetCursorPos(&pt);
                 std::cout << "Pressed at (" << pt.x << ", " << pt.y << ")" << std::endl;
                 ShowContextMenu(hwnd, pt);
-            }                
+            }
             break;
 
             default:
@@ -312,23 +324,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_COMMAND:
-    {
-        int command = LOWORD(wParam);
-        switch (command)
         {
-        case IDM_EXIT:
-            DestroyWindow(hwnd);
-            break;
+            int command = LOWORD(wParam);
+            switch (command)
+            {
+            case IDM_EXIT:
+                DestroyWindow(hwnd);
+                break;
 
-        case IDM_ABOUT:
-            MessageBox(hwnd, L"This is a simple program designed to\naid in window management with dumb monitors", L"About winRestore", MB_OK | MB_ICONINFORMATION);
-            break;
-        
-        default:
-            std::cout << "Unknown message received" << std::endl;
-            break;
+            case IDM_ABOUT:
+                MessageBox(hwnd, L"This is a simple program designed to\naid in window management with dumb monitors", L"About winRestore", MB_OK | MB_ICONINFORMATION);
+                break;
+
+            case IDM_SAVE:
+                std::cout << "User pressed save" << std::endl;
+                break;
+            
+            default:
+                std::cout << "Unknown message received" << std::endl;
+                break;
+            }
         }
-    }
 
     case WM_TIMER:
         if (pollWindowSetup)
